@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package catalog;
+
+option go_package = "internal/proto;proto";
+
+// Сообщение для представления продукта
+message Product {
+    int32 product_id = 1;
+    string product_name = 2;
+    int32 stock_quantity = 3;
+    double price_per_unit = 4;
+}
+
+// Запрос для получения продукта по ID
+message GetProductByIDRequest {
+    int32 product_id = 1;
+}
+
+// Ответ на запрос получения продукта
+message GetProductByIDResponse {
+    Product product = 1;
+}
+
+// Запрос для получения всех продуктов
+message GetAllProductsRequest {}
+
+// Ответ на запрос получения всех продуктов
+message GetAllProductsResponse {
+    repeated Product products = 1;
+}
+
+message AddProductRequest {
+    string product_name = 1;
+    int32 stock_quantity = 2;
+    double price_per_unit = 3;
+}
+
+message AddProductResponse {
+    int32 product_id = 1;
+}
+
+message UpdateProductRequest {
+    int32 product_id = 1;
+    string product_name = 2;
+    int32 stock_quantity = 3;
+    double price_per_unit = 4;
+}
+
+message UpdateProductResponse {
+    bool success = 1;
+}
+
+message DeleteProductRequest {
+    int32 product_id = 1;
+}
+
+message DeleteProductResponse {
+    bool success = 1;
+}
+
+service ProductService {
+    rpc GetProductByID(GetProductByIDRequest) returns (GetProductByIDResponse);
+    rpc GetAllProducts(GetAllProductsRequest) returns (GetAllProductsResponse);
+    rpc AddProduct(AddProductRequest) returns (AddProductResponse);
+    rpc UpdateProduct(UpdateProductRequest) returns (UpdateProductResponse);
+    rpc DeleteProduct(DeleteProductRequest) returns (DeleteProductResponse);
+}
