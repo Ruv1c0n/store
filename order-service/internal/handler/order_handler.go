@@ -53,7 +53,7 @@ func (h *OrderHandler) CreateOrder(ctx context.Context, req *proto.CreateOrderRe
 		// Проверяем наличие товара в достаточном количестве
 		if stockQuantity < int(item.Quantity) {
 			log.Printf("Недостаточно товара в наличии для product_id: %d", item.ProductId)
-			return nil, fmt.Errorf("Not enough stock for the product")
+			return nil, fmt.Errorf(" Not enough stock for the product")
 		}
 
 		// Создаем запись в таблице Orders
