@@ -55,7 +55,7 @@ func (h *OrderHandler) CreateOrder(ctx context.Context, req *proto.CreateOrderRe
 		// Проверяем наличие товара в достаточном количестве
 		if stockQuantity < int(item.Quantity) {
 			log.Printf("Недостаточно товара в наличии для product_id: %d", item.ProductId)
-			return nil, fmt.Errorf("Not enough stock for the product")
+			return nil, fmt.Errorf(" Not enough stock for the product")
 		}
 
 		// Создаем запись в таблице Orders
@@ -124,7 +124,7 @@ func (h *OrderHandler) UpdateOrder(ctx context.Context, req *proto.UpdateOrderRe
 	log.Printf("Получен запрос UpdateOrder для order_id: %d", req.OrderId)
 
 	// Обновляем информацию о заказе
-	err := h.db.UpdateOrder(req.OrderId, req.Items, req.Status)
+	err := h.db.UpdateOrder(req.OrderId, req.Status)
 	if err != nil {
 		log.Printf("Ошибка при обновлении заказа: %v", err)
 		return nil, err
