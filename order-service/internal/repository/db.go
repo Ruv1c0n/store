@@ -183,25 +183,57 @@ func (db *orderDB) UpdateOrder(orderID int32, items []*proto.OrderItem, status s
 			continue
 		}
 
-		// Обновляем количество товара в заказе
-		_, err = tx.Exec(context.Background(), `
-            UPDATE Orders 
-            SET quantity = $1 
-            WHERE orderid = $2 AND productid = $3`, item.Quantity, orderID, item.ProductId)
+		// Получаем текущее количество товара на складе из каталога
+		_, stockQuantity, _, err := db.GetProductByID(item.ProductId)
 		if err != nil {
-			return fmt.Errorf("failed to update order item quantity: %w", err)
+			return fmt.Errorf("failed to get product stock quantity: %w", err)
 		}
 
-		// Синхронизируем изменения с каталогом через gRPC
+		if item.Quantity < 0 {
+			return fmt.Errorf("incorect json")
+		}
+
+		// Вычисляем разницу между новым и старым количеством в заказе
 		var deltaQuantity int32
 		if item.Quantity > currentQuantity {
-			deltaQuantity = item.Quantity - currentQuantity // Увеличили количество в заказе -> уменьшаем на складе
+			// Увеличили количество в заказе -> уменьшаем на складе
+			deltaQuantity = item.Quantity - currentQuantity
+
+			// Проверяем, достаточно ли товара на складе
+			if stockQuantity < int(deltaQuantity) {
+				return fmt.Errorf("not enough stock for product %d: requested %d, available %d", item.ProductId, deltaQuantity, stockQuantity)
+			}
+
+			// Обновляем количество товара в заказе
+			_, err = tx.Exec(context.Background(), `
+                UPDATE Orders 
+                SET quantity = $1 
+                WHERE orderid = $2 AND productid = $3`, item.Quantity, orderID, item.ProductId)
+			if err != nil {
+				return fmt.Errorf("failed to update order item quantity: %w", err)
+			}
+
+			// Синхронизируем изменения с каталогом через gRPC
+			newStockQuantity := stockQuantity + int(deltaQuantity) // Уменьшаем stock
+			err = db.catalogClient.UpdateProductStock(item.ProductId, int32(newStockQuantity))
 		} else {
-			deltaQuantity = currentQuantity - item.Quantity // Уменьшили количество в заказе -> увеличиваем на складе
+			// Уменьшили количество в заказе -> увеличиваем на складе
+			deltaQuantity = currentQuantity - item.Quantity
+
+			// Обновляем количество товара в заказе
+			_, err = tx.Exec(context.Background(), `
+                UPDATE Orders 
+                SET quantity = $1 
+                WHERE orderid = $2 AND productid = $3`, item.Quantity, orderID, item.ProductId)
+			if err != nil {
+				return fmt.Errorf("failed to update order item quantity: %w", err)
+			}
+
+			// Синхронизируем изменения с каталогом через gRPC
+			newStockQuantity := stockQuantity + int(deltaQuantity) // Увеличиваем stock
+			err = db.catalogClient.UpdateProductStock(item.ProductId, int32(newStockQuantity))
 		}
 
-		// Вызываем метод catalog-service через gRPC
-		err = db.catalogClient.UpdateProductStock(item.ProductId, deltaQuantity)
 		if err != nil {
 			return fmt.Errorf("failed to update catalog stock via gRPC: %w", err)
 		}
@@ -215,10 +247,49 @@ func (db *orderDB) UpdateOrder(orderID int32, items []*proto.OrderItem, status s
 	return nil
 }
 
-// DeleteOrder удаляет заказ из базы данных
+// DeleteOrder удаляет заказ из базы данных и восстанавливает количество товаров в каталоге
 func (db *orderDB) DeleteOrder(orderID int32) error {
-	_, err := db.conn.Exec(context.Background(), `DELETE FROM orders WHERE orderid = $1`, orderID)
-	return err
+	// Начинаем транзакцию
+	tx, err := db.conn.Begin(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(context.Background())
+
+	// Получаем информацию о заказе
+	order, err := db.GetOrderByID(orderID)
+	if err != nil {
+		return fmt.Errorf("failed to get order details: %w", err)
+	}
+
+	// Восстанавливаем количество товаров в каталоге
+	for _, item := range order.Items {
+		// Получаем текущее количество товара на складе из каталога
+		_, stockQuantity, _, err := db.GetProductByID(item.ProductId)
+		if err != nil {
+			return fmt.Errorf("failed to get product stock quantity: %w", err)
+		}
+
+		// Восстанавливаем количество товара на складе
+		newStockQuantity := stockQuantity + int(item.Quantity)
+		err = db.catalogClient.UpdateProductStock(item.ProductId, int32(newStockQuantity))
+		if err != nil {
+			return fmt.Errorf("failed to update catalog stock via gRPC: %w", err)
+		}
+	}
+
+	// Удаляем заказ из базы данных
+	_, err = tx.Exec(context.Background(), `DELETE FROM orders WHERE orderid = $1`, orderID)
+	if err != nil {
+		return fmt.Errorf("failed to delete order: %w", err)
+	}
+
+	// Завершаем транзакцию
+	if err := tx.Commit(context.Background()); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 // GetProductByID возвращает информацию о товаре по его ID
