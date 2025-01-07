@@ -51,9 +51,9 @@ func (db *orderDB) GetOrderByID(orderID int32) (*proto.Order, error) {
 
 	// Получаем список продуктов в заказе
 	rows, err := db.conn.Query(context.Background(), `
-		SELECT productid, quantity 
-		FROM orders 
-		WHERE orderid = $1`, orderID)
+        SELECT productid, quantity 
+        FROM orders 
+        WHERE orderid = $1`, orderID)
 	if err != nil {
 		return nil, err
 	}
@@ -72,14 +72,18 @@ func (db *orderDB) GetOrderByID(orderID int32) (*proto.Order, error) {
 	}
 
 	// Получаем общую информацию о заказе (дата, статус, клиент)
+	var orderDate time.Time
 	err = db.conn.QueryRow(context.Background(), `
-		SELECT orderdate, status, customerid 
-		FROM orders 
-		WHERE orderid = $1 
-		LIMIT 1`, orderID).Scan(&order.OrderDate, &order.Status, &order.CustomerId)
+        SELECT orderdate, status, customerid 
+        FROM orders 
+        WHERE orderid = $1 
+        LIMIT 1`, orderID).Scan(&orderDate, &order.Status, &order.CustomerId)
 	if err != nil {
 		return nil, err
 	}
+
+	// Преобразуем время в строку
+	order.OrderDate = orderDate.Format(time.RFC3339)
 
 	return &order, nil
 }
@@ -131,7 +135,6 @@ func (db *orderDB) GetAllOrders() ([]*proto.Order, error) {
 						Quantity:  quantity,
 					},
 				},
-				// Поле TotalPrice больше не используется
 			}
 			orderMap[orderID] = order
 			orders = append(orders, order)

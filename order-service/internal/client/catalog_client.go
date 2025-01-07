@@ -2,10 +2,9 @@ package client
 
 import (
 	"context"
-	"log"
-
 	"google.golang.org/grpc"
-	"store/proto" // Импортируем protobuf-файлы
+	"log"
+	"store/proto"
 )
 
 // CatalogClient представляет gRPC-клиент для взаимодействия с catalog-service
