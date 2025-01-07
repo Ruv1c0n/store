@@ -126,7 +126,7 @@ func (h *OrderHandler) UpdateOrder(ctx context.Context, req *proto.UpdateOrderRe
 	log.Printf("Получен запрос UpdateOrder для order_id: %d", req.OrderId)
 
 	// Обновляем информацию о заказе
-	err := h.db.UpdateOrder(req.OrderId, req.Items, req.Status)
+	err := h.db.UpdateOrder(req.OrderId, req.Status)
 	if err != nil {
 		log.Printf("Ошибка при обновлении заказа: %v", err)
 		return nil, err

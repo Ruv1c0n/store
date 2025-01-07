@@ -13,11 +13,9 @@ message Order {
     int32 customer_id = 5;       // Идентификатор клиента
 }
 
-
 message OrderItem {
     int32 product_id = 1;  // Идентификатор продукта
     int32 quantity = 2;  // Количество товара
-    // Убрано поле price_per_unit
 }
 
 // Запрос на создание нового заказа
@@ -49,11 +47,10 @@ message GetAllOrdersResponse {
     repeated Order orders = 1;   // Список всех заказов
 }
 
-// Запрос на обновление заказа
+// Запрос на обновление статуса заказа
 message UpdateOrderRequest {
     int32 order_id = 1;    // Идентификатор заказа
-    repeated OrderItem items = 2;  // Список товаров для обновления
-    string status = 3;     // Новый статус заказа
+    string status = 2;     // Новый статус заказа
 }
 
 // Ответ на обновление заказа
