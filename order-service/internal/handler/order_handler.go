@@ -5,12 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	//"github.com/jackc/pgx/v4"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"log"
 	"store/order-service/internal/client"
-	db "store/order-service/internal/repository"
+	db "store/order-service/internal/repository" // Импорт пакета db
 	"store/proto"
 )
 

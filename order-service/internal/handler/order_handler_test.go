@@ -18,13 +18,9 @@ func TestCreateOrder_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	// Create a mock for OrderDB
 	mockDB := mock.NewMockOrderDB(ctrl)
-
-	// Create the OrderHandler with the mock
 	handler := NewOrderHandler(mockDB)
 
-	// Define test data
 	customerID := int32(1)
 	productID := int32(2)
 	quantity := int32(2)
@@ -32,7 +28,6 @@ func TestCreateOrder_Success(t *testing.T) {
 	orderID := int32(2)
 	stockQuantity := 10
 
-	// Mock GetNextOrderID to return a new order ID
 	mockDB.EXPECT().
 		GetNextOrderID(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, id *int32) error {
@@ -40,17 +35,14 @@ func TestCreateOrder_Success(t *testing.T) {
 			return nil
 		})
 
-	// Mock GetProductByID to return product details
 	mockDB.EXPECT().
 		GetProductByID(productID).
 		Return("ProductName", stockQuantity, pricePerUnit, nil)
 
-	// Mock CreateOrder to simulate creating an order
 	mockDB.EXPECT().
 		CreateOrder(gomock.Any(), orderID, productID, customerID, quantity, pricePerUnit).
 		Return(nil)
 
-	// Call the CreateOrder method
 	req := &proto.CreateOrderRequest{
 		CustomerId: customerID,
 		Items: []*proto.OrderItem{
@@ -62,7 +54,6 @@ func TestCreateOrder_Success(t *testing.T) {
 	}
 	resp, err := handler.CreateOrder(context.Background(), req)
 
-	// Assert the results
 	assert.NoError(t, err)
 	assert.Equal(t, orderID, resp.OrderId)
 }
@@ -188,6 +179,30 @@ func TestGetOrderByID_NotFound(t *testing.T) {
 	status, ok := status.FromError(err)
 	assert.True(t, ok)
 	assert.Equal(t, codes.NotFound, status.Code())
+}
+
+func TestUpdateOrder_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDB := mock.NewMockOrderDB(ctrl)
+	handler := NewOrderHandler(mockDB)
+
+	orderID := int32(1)
+	status := "new_status"
+
+	mockDB.EXPECT().
+		UpdateOrder(orderID, status).
+		Return(nil)
+
+	req := &proto.UpdateOrderRequest{
+		OrderId: orderID,
+		Status:  status,
+	}
+	resp, err := handler.UpdateOrder(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.True(t, resp.Success)
 }
 
 func TestDeleteOrder_Success(t *testing.T) {
