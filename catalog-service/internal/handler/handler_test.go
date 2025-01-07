@@ -2,11 +2,11 @@ package handler
 
 import (
 	"context"
+	"store/proto"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	gomock "go.uber.org/mock/gomock" // Используем go.uber.org/mock/gomock
-	"store/catalog-service/internal/proto"
+	gomock "go.uber.org/mock/gomock"                 // Используем go.uber.org/mock/gomock
 	"store/catalog-service/internal/repository/mock" // Импортируем моки
 )
 

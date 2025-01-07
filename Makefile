@@ -1,6 +1,6 @@
 # Variables
 GO_CMD = go
-GOOSE_CMD = goose
+MIGRATE_CMD = migrate
 PROTOC_CMD = protoc
 BUILD_DIR = bin
 CATALOG_SERVICE_DIR = ./catalog-service
@@ -10,9 +10,13 @@ ORDER_BINARY = $(BUILD_DIR)/order-service
 CATALOG_PORT = 50051
 ORDER_PORT = 50052
 
+# Database connection strings
+CATALOG_DB_URL = "postgres://postgres:0000@localhost:5432/catalog?sslmode=disable&x-migrations-table=catalog_migrations"
+ORDER_DB_URL = "postgres://postgres:0000@localhost:5432/catalog?sslmode=disable&x-migrations-table=order_migrations"
+
 # Path to proto files
-CATALOG_PROTO_FILES = $(CATALOG_SERVICE_DIR)/internal/proto/catalog.proto
-ORDER_PROTO_FILES = $(ORDER_SERVICE_DIR)/internal/proto/order.proto
+CATALOG_PROTO_FILES = ./proto/catalog.proto
+ORDER_PROTO_FILES = ./proto/order.proto
 
 # Repository files
 CATALOG_REPO_FILES = $(CATALOG_SERVICE_DIR)/internal/repository/db.go
@@ -66,17 +70,17 @@ run: ## Run all services
 
 # Migrations for CatalogService
 migrate-catalog-up: ## Apply migrations for CatalogService
-	$(GOOSE_CMD) -dir $(CATALOG_SERVICE_DIR)/migrations postgres "user=your_user password=your_password dbname=catalog_db sslmode=disable" up
+	$(MIGRATE_CMD) -database $(CATALOG_DB_URL) -path $(CATALOG_SERVICE_DIR)/migrations up
 
 migrate-catalog-down: ## Rollback migrations for CatalogService
-	$(GOOSE_CMD) -dir $(CATALOG_SERVICE_DIR)/migrations postgres "user=your_user password=your_password dbname=catalog_db sslmode=disable" down
+	$(MIGRATE_CMD) -database $(CATALOG_DB_URL) -path $(CATALOG_SERVICE_DIR)/migrations down
 
 # Migrations for OrderService
 migrate-order-up: ## Apply migrations for OrderService
-	$(GOOSE_CMD) -dir $(ORDER_SERVICE_DIR)/migrations postgres "user=your_user password=your_password dbname=order_db sslmode=disable" up
+	$(MIGRATE_CMD) -database $(ORDER_DB_URL) -path $(ORDER_SERVICE_DIR)/migrations up
 
 migrate-order-down: ## Rollback migrations for OrderService
-	$(GOOSE_CMD) -dir $(ORDER_SERVICE_DIR)/migrations postgres "user=your_user password=your_password dbname=order_db sslmode=disable" down
+	$(MIGRATE_CMD) -database $(ORDER_DB_URL) -path $(ORDER_SERVICE_DIR)/migrations down
 
 # Apply migrations for all services
 migrate-up: migrate-catalog-up migrate-order-up ## Apply migrations for all services

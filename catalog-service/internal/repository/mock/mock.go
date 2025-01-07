@@ -11,7 +11,7 @@ package mock
 
 import (
 	reflect "reflect"
-	proto "store/catalog-service/internal/proto"
+	"store/proto"
 
 	gomock "go.uber.org/mock/gomock"
 )

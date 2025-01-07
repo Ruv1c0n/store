@@ -4,18 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
-	"net"
-
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+	"log"
+	"net"
 	"store/catalog-service/internal/handler"
-	"store/catalog-service/internal/proto"
 	db "store/catalog-service/internal/repository"
+	"store/proto"
 )
 
 // createDatabaseIfNotExists создаёт базу данных, если её ещё нет
@@ -82,7 +81,7 @@ func main() {
 	fmt.Println("Connected to PostgreSQL!")
 
 	// Применяем миграции
-	if err := runMigrations("postgres://postgres:0000@localhost:5432/catalog?sslmode=disable"); err != nil {
+	if err := runMigrations("postgres://postgres:0000@localhost:5432/catalog?sslmode=disable&x-migrations-table=catalog_migrations"); err != nil {
 		log.Fatalf("Failed to run migrations: %v\n", err)
 	}
 	fmt.Println("Migrations applied successfully!")
