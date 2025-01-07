@@ -55,7 +55,7 @@ func createDatabaseIfNotExists(dbURL, dbName string) error {
 	defer db.Close()
 
 	var exists bool
-	err = db.QueryRow("SELECT EXISTS (SELECT FROM pg_database WHERE datname = $1)", dbName).Scan(&exists)
+	err = db.QueryRow("SELECT EXISTS (SELECT * FROM pg_database WHERE datname = 'catalog')", dbName).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check if database exists: %w", err)
 	}
