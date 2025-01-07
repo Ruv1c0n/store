@@ -2,8 +2,10 @@ package handler
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v4"
+	//"github.com/jackc/pgx/v4"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"log"
@@ -89,20 +91,16 @@ func (h *OrderHandler) GetOrderByID(ctx context.Context, req *proto.GetOrderByID
 	// Получаем заказ из базы данных
 	order, err := h.db.GetOrderByID(req.OrderId)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			// Если заказ не найден, возвращаем ошибку "Not Found"
-			log.Printf("Заказ с order_id=%d не найден", req.OrderId)
+		if errors.Is(err, sql.ErrNoRows) {
+			// Возвращаем gRPC-ошибку с кодом NotFound
 			return nil, status.Errorf(codes.NotFound, "Заказ не найден")
 		}
-		// В случае других ошибок возвращаем Internal Server Error
-		log.Printf("Ошибка при получении заказа: %v", err)
+		// Возвращаем внутреннюю ошибку сервера
 		return nil, status.Errorf(codes.Internal, "Внутренняя ошибка сервера")
 	}
 
-	// Возвращаем заказ
-	return &proto.GetOrderByIDResponse{
-		Order: order,
-	}, nil
+	// Возвращаем ответ
+	return &proto.GetOrderByIDResponse{Order: order}, nil
 }
 
 // GetAllOrders обрабатывает запрос на получение всех заказов

@@ -48,6 +48,11 @@ func TestUpdateProduct(t *testing.T) {
 	// Создаем экземпляр CatalogHandler с моком
 	h := NewCatalogHandler(mockDB)
 
+	// Мокируем вызов GetProductByID для получения текущих данных о товаре
+	mockDB.EXPECT().
+		GetProductByID(int32(1)). // Используем int32
+		Return("Old Product", 10, 19.99, nil)
+
 	// Мокируем вызов UpdateProduct
 	mockDB.EXPECT().
 		UpdateProduct(1, "Updated Product", 20, 29.99).

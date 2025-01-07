@@ -21,6 +21,8 @@ type OrderDB interface {
 	GetProductByID(productID int32) (string, int, float64, error)
 }
 
+//go:generate mockgen -source=db.go -destination=mock/mock.go
+
 // orderDB реализует интерфейс OrderDB
 type orderDB struct {
 	conn          *pgx.Conn
