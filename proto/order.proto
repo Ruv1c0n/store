@@ -51,9 +51,9 @@ message GetAllOrdersResponse {
 
 // Запрос на обновление заказа
 message UpdateOrderRequest {
-    int32 order_id = 1;          // Идентификатор заказа
-    int32 quantity = 2;          // Новое количество товара
-    string status = 3;           // Новый статус заказа
+    int32 order_id = 1;    // Идентификатор заказа
+    repeated OrderItem items = 2;  // Список товаров для обновления
+    string status = 3;     // Новый статус заказа
 }
 
 // Ответ на обновление заказа

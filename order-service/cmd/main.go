@@ -12,10 +12,10 @@ import (
 	"google.golang.org/grpc/reflection"
 	"log"
 	"net"
-	"store/proto"
-	//"store/catalog-service/internal/proto"
+	"store/order-service/internal/client" // Импортируем пакет client
 	"store/order-service/internal/handler"
 	db "store/order-service/internal/repository"
+	"store/proto"
 )
 
 func createDatabaseIfNotExists(dbURL, dbName string) error {
@@ -86,8 +86,15 @@ func main() {
 	}
 	fmt.Println("Migrations applied successfully!")
 
+	// Создаем клиент для CatalogService
+	catalogClient, err := client.NewCatalogClient("localhost:50051")
+	if err != nil {
+		log.Fatalf("Failed to create catalog client: %v", err)
+	}
+	defer catalogClient.Close()
+
 	// Создаем экземпляр OrderDB
-	orderDB := db.NewOrderDB(conn)
+	orderDB := db.NewOrderDB(conn, catalogClient)
 
 	// Создаем новый gRPC сервер
 	grpcServer := grpc.NewServer()

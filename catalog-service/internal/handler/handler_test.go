@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	gomock "go.uber.org/mock/gomock"                 // Используем go.uber.org/mock/gomock
+	"go.uber.org/mock/gomock"                        // Используем go.uber.org/mock/gomock
 	"store/catalog-service/internal/repository/mock" // Импортируем моки
 )
 

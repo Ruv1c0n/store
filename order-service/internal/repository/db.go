@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"fmt"
+	"store/order-service/internal/client"
 	"store/proto"
 	"time"
 
@@ -14,20 +16,23 @@ type OrderDB interface {
 	CreateOrder(ctx context.Context, orderID int32, productID int32, customerID int32, quantity int32, pricePerUnit float64) error
 	GetOrderByID(orderID int32) (*proto.Order, error)
 	GetAllOrders() ([]*proto.Order, error)
-	UpdateOrder(orderID int32, quantity int32, status string) error
+	UpdateOrder(orderID int32, items []*proto.OrderItem, status string) error
 	DeleteOrder(orderID int32) error
 	GetProductByID(productID int32) (string, int, float64, error)
-	// Убрали UpdateProductStock, так как теперь это делается через gRPC
 }
 
 // orderDB реализует интерфейс OrderDB
 type orderDB struct {
-	conn *pgx.Conn
+	conn          *pgx.Conn
+	catalogClient client.CatalogClient // Используем интерфейс
 }
 
 // NewOrderDB создает новый экземпляр orderDB
-func NewOrderDB(conn *pgx.Conn) OrderDB {
-	return &orderDB{conn: conn}
+func NewOrderDB(conn *pgx.Conn, catalogClient client.CatalogClient) OrderDB {
+	return &orderDB{
+		conn:          conn,
+		catalogClient: catalogClient,
+	}
 }
 
 // CreateOrder добавляет новый заказ в базу данных
@@ -144,13 +149,70 @@ func (db *orderDB) GetAllOrders() ([]*proto.Order, error) {
 	return orders, nil
 }
 
-// UpdateOrder обновляет информацию о заказе
-func (db *orderDB) UpdateOrder(orderID int32, quantity int32, status string) error {
-	_, err := db.conn.Exec(context.Background(), `
-		UPDATE orders 
-		SET quantity = $1, status = $2 
-		WHERE orderid = $3`, quantity, status, orderID)
-	return err
+func (db *orderDB) UpdateOrder(orderID int32, items []*proto.OrderItem, status string) error {
+	// Начинаем транзакцию
+	tx, err := db.conn.Begin(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(context.Background())
+
+	// Обновляем статус заказа
+	_, err = tx.Exec(context.Background(), `
+        UPDATE Orders 
+        SET status = $1 
+        WHERE orderid = $2`, status, orderID)
+	if err != nil {
+		return fmt.Errorf("failed to update order status: %w", err)
+	}
+
+	// Обрабатываем каждый элемент в заказе
+	for _, item := range items {
+		// Получаем текущее количество товара в заказе
+		var currentQuantity int32
+		err = tx.QueryRow(context.Background(), `
+            SELECT quantity 
+            FROM Orders 
+            WHERE orderid = $1 AND productid = $2`, orderID, item.ProductId).Scan(&currentQuantity)
+		if err != nil {
+			return fmt.Errorf("failed to get current quantity: %w", err)
+		}
+
+		// Если количество не изменилось, пропускаем обновление
+		if item.Quantity == currentQuantity {
+			continue
+		}
+
+		// Обновляем количество товара в заказе
+		_, err = tx.Exec(context.Background(), `
+            UPDATE Orders 
+            SET quantity = $1 
+            WHERE orderid = $2 AND productid = $3`, item.Quantity, orderID, item.ProductId)
+		if err != nil {
+			return fmt.Errorf("failed to update order item quantity: %w", err)
+		}
+
+		// Синхронизируем изменения с каталогом через gRPC
+		var deltaQuantity int32
+		if item.Quantity > currentQuantity {
+			deltaQuantity = item.Quantity - currentQuantity // Увеличили количество в заказе -> уменьшаем на складе
+		} else {
+			deltaQuantity = currentQuantity - item.Quantity // Уменьшили количество в заказе -> увеличиваем на складе
+		}
+
+		// Вызываем метод catalog-service через gRPC
+		err = db.catalogClient.UpdateProductStock(item.ProductId, deltaQuantity)
+		if err != nil {
+			return fmt.Errorf("failed to update catalog stock via gRPC: %w", err)
+		}
+	}
+
+	// Завершаем транзакцию
+	if err := tx.Commit(context.Background()); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 // DeleteOrder удаляет заказ из базы данных

@@ -1,0 +1,10 @@
+{
+  "order_id": 1,
+  "items": [
+    {
+      "product_id": 1,
+      "quantity": 10
+    }
+  ],
+  "status": "updated"
+}

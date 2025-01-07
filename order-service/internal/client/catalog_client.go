@@ -7,31 +7,37 @@ import (
 	"store/proto"
 )
 
-// CatalogClient представляет gRPC-клиент для взаимодействия с catalog-service
-type CatalogClient struct {
+// CatalogClient интерфейс для взаимодействия с catalog-service
+type CatalogClient interface {
+	UpdateProductStock(productID int32, newStockQuantity int32) error
+	Close()
+}
+
+// CatalogClientImpl реализует интерфейс CatalogClient
+type CatalogClientImpl struct {
 	conn   *grpc.ClientConn
 	client proto.ProductServiceClient
 }
 
 // NewCatalogClient создает новый экземпляр CatalogClient
-func NewCatalogClient(address string) (*CatalogClient, error) {
+func NewCatalogClient(address string) (CatalogClient, error) {
 	conn, err := grpc.Dial(address, grpc.WithInsecure()) // Устанавливаем соединение
 	if err != nil {
 		return nil, err
 	}
 	client := proto.NewProductServiceClient(conn) // Создаем клиент
-	return &CatalogClient{conn: conn, client: client}, nil
+	return &CatalogClientImpl{conn: conn, client: client}, nil
 }
 
 // Close закрывает соединение с catalog-service
-func (c *CatalogClient) Close() {
+func (c *CatalogClientImpl) Close() {
 	if c.conn != nil {
 		c.conn.Close()
 	}
 }
 
 // UpdateProductStock обновляет количество товара в каталоге через gRPC
-func (c *CatalogClient) UpdateProductStock(productID int32, newStockQuantity int32) error {
+func (c *CatalogClientImpl) UpdateProductStock(productID int32, newStockQuantity int32) error {
 	req := &proto.UpdateProductRequest{
 		ProductId:     productID,
 		StockQuantity: newStockQuantity,
