@@ -19,14 +19,32 @@ func NewCatalogHandler(db db.CatalogDB) *CatalogHandler {
 func (h *CatalogHandler) UpdateProduct(ctx context.Context, req *proto2.UpdateProductRequest) (*proto2.UpdateProductResponse, error) {
 	log.Printf("Получен запрос UpdateProduct для product_id: %d", req.ProductId)
 
-	// Обновляем продукт в базе данных
-	err := h.db.UpdateProduct(int(req.ProductId), req.ProductName, int(req.StockQuantity), req.PricePerUnit)
+	// Получаем текущие данные о товаре
+	productName, stockQuantity, pricePerUnit, err := h.db.GetProductByID(req.ProductId)
 	if err != nil {
-		log.Printf("Ошибка при обновлении продукта: %v", err)
+		log.Printf("Ошибка при получении товара: %v", err)
 		return nil, err
 	}
 
-	// Возвращаем ответ
+	// Обновляем только те поля, которые переданы в запросе
+	if req.ProductName != "" {
+		productName = req.ProductName
+	}
+	if req.StockQuantity != 0 {
+		stockQuantity = int(req.StockQuantity)
+	}
+	if req.PricePerUnit != 0 {
+		pricePerUnit = req.PricePerUnit
+	}
+
+	// Обновляем товар в базе данных
+	err = h.db.UpdateProduct(int(req.ProductId), productName, stockQuantity, pricePerUnit)
+	if err != nil {
+		log.Printf("Ошибка при обновлении товара: %v", err)
+		return nil, err
+	}
+
+	// Возвращаем успешный ответ
 	return &proto2.UpdateProductResponse{
 		Success: true,
 	}, nil

@@ -32,12 +32,12 @@ $(BUILD_DIR):
 # Generate Go files from proto for CatalogService
 init-proto-catalog: $(CATALOG_PROTO_FILES) ## Initialize proto files for CatalogService
 	@echo "Generating Go files from proto for CatalogService..."
-	$(PROTOC_CMD) --go_out=$(CATALOG_SERVICE_DIR) --go-grpc_out=$(CATALOG_SERVICE_DIR) $(CATALOG_PROTO_FILES)
+	$(PROTOC_CMD) --go_out=./proto --go-grpc_out=./proto $(CATALOG_PROTO_FILES)
 
 # Generate Go files from proto for OrderService
 init-proto-order: $(ORDER_PROTO_FILES) ## Initialize proto files for OrderService
 	@echo "Generating Go files from proto for OrderService..."
-	$(PROTOC_CMD) --go_out=$(ORDER_SERVICE_DIR) --go-grpc_out=$(ORDER_SERVICE_DIR) $(ORDER_PROTO_FILES)
+	$(PROTOC_CMD) --go_out=./proto --go-grpc_out=./proto $(ORDER_PROTO_FILES)
 
 # Initialize proto files for both services
 init-proto: init-proto-catalog init-proto-order ## Initialize proto files for all services
