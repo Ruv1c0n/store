@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/json"
+    "io/ioutil"
+    "os"
 	"context"
 	"database/sql"
 	"fmt"
@@ -16,6 +19,32 @@ import (
 	db "store/catalog-service/internal/repository"
 	"store/proto"
 )
+
+type DatabaseConfig struct {
+    DbName        string `json:"dbName"`
+    DbUrl         string `json:"dbUrl"`
+    ServerName    string `json:"serverName"`
+    ServerPassword string `json:"serverPassword"`
+    ServerHostName string `json:"serverHostName"`
+    ServerPort    string `json:"serverPort"`
+}
+
+func loadDatabaseConfig(filePath string) (DatabaseConfig, error) {
+    var config DatabaseConfig
+    file, err := os.Open(filePath)
+    if err != nil {
+        return config, err
+    }
+    defer file.Close()
+
+    bytes, err := ioutil.ReadAll(file)
+    if err != nil {
+        return config, err
+    }
+
+    err = json.Unmarshal(bytes, &config)
+    return config, err
+}
 
 // createDatabaseIfNotExists создаёт базу данных, если её ещё нет
 func createDatabaseIfNotExists(dbURL, dbName string) error {
@@ -63,17 +92,28 @@ func runMigrations(databaseURL string) error {
 }
 
 func main() {
-	// Параметры подключения
-	dbURL := "postgres://postgres:0000@localhost:5432?sslmode=disable"
-	dbName := "catalog"
+	// Загружаем конфигурацию базы данных
+    config, err := loadDatabaseConfig("database.config")
+    if err != nil {
+        log.Fatalf("Failed to load database config: %v\n", err)
+    }
+
+    // Формируем dbURL из конфигурации
+    dbURL := fmt.Sprintf(
+		config.DbUrl, 
+		config.ServerName, 
+		config.ServerPassword, 
+		config.ServerHostName, 
+		config.ServerPort,
+	)
 
 	// Создаём базу данных, если её нет
-	if err := createDatabaseIfNotExists(dbURL, dbName); err != nil {
+	if err := createDatabaseIfNotExists(dbURL, config.DbName); err != nil {
 		log.Fatalf("Failed to create database: %v\n", err)
 	}
 
 	// Подключаемся к базе данных
-	conn, err := pgx.Connect(context.Background(), "postgres://postgres:0000@localhost:5432/catalog?sslmode=disable")
+	conn, err := pgx.Connect(context.Background(), dbURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
@@ -81,7 +121,7 @@ func main() {
 	fmt.Println("Connected to PostgreSQL!")
 
 	// Применяем миграции
-	if err := runMigrations("postgres://postgres:0000@localhost:5432/catalog?sslmode=disable&x-migrations-table=catalog_migrations"); err != nil {
+	if err := runMigrations(dbURL + "&x-migrations-table=catalog_migrations"); err != nil {
 		log.Fatalf("Failed to run migrations: %v\n", err)
 	}
 	fmt.Println("Migrations applied successfully!")
