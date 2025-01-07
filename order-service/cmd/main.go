@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/json"
+    "io/ioutil"
+    "os"
 	"context"
 	"database/sql"
 	"fmt"
@@ -18,6 +21,32 @@ import (
 	"store/order-service/internal/handler"
 	db "store/order-service/internal/repository"
 )
+
+type DatabaseConfig struct {
+    DbName        string `json:"dbName"`
+    DbUrl         string `json:"dbUrl"`
+    ServerName    string `json:"serverName"`
+    ServerPassword string `json:"serverPassword"`
+    ServerHostName string `json:"serverHostName"`
+    ServerPort    string `json:"serverPort"`
+}
+
+func loadDatabaseConfig(filePath string) (DatabaseConfig, error) {
+    var config DatabaseConfig
+    file, err := os.Open(filePath)
+    if err != nil {
+        return config, err
+    }
+    defer file.Close()
+
+    bytes, err := ioutil.ReadAll(file)
+    if err != nil {
+        return config, err
+    }
+
+    err = json.Unmarshal(bytes, &config)
+    return config, err
+}
 
 func createDatabaseIfNotExists(dbURL, dbName string) error {
 	db, err := sql.Open("postgres", dbURL)
@@ -64,50 +93,60 @@ func runMigrations(databaseURL string) error {
 }
 
 func main() {
-	// Параметры подключения
-	dbURL := "postgres://postgres:0000@localhost:5432?sslmode=disable"
-	dbName := "catalog" // Используем базу данных "catalog"
+    // Загружаем конфигурацию базы данных
+    config, err := loadDatabaseConfig("database.config")
+    if err != nil {
+        log.Fatalf("Failed to load database config: %v\n", err)
+    }
 
-	// Создаём базу данных, если её нет
-	if err := createDatabaseIfNotExists(dbURL, dbName); err != nil {
-		log.Fatalf("Failed to create database: %v\n", err)
-	}
+    // Формируем dbURL из конфигурации
+    dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", 
+        config.ServerName, 
+        config.ServerPassword, 
+        config.ServerHostName, 
+        config.ServerPort, 
+        config.DbName)
 
-	// Подключаемся к базе данных
-	conn, err := pgx.Connect(context.Background(), "postgres://postgres:0000@localhost:5432/catalog?sslmode=disable")
-	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
-	}
-	defer conn.Close(context.Background())
-	fmt.Println("Connected to PostgreSQL!")
+    // Создаём базу данных, если её нет
+    if err := createDatabaseIfNotExists(dbURL, config.DbName); err != nil {
+        log.Fatalf("Failed to create database: %v\n", err)
+    }
 
-	// Применяем миграции
-	if err := runMigrations("postgres://postgres:0000@localhost:5432/catalog?sslmode=disable&x-migrations-table=order_migrations"); err != nil {
-		log.Fatalf("Failed to run migrations: %v\n", err)
-	}
-	fmt.Println("Migrations applied successfully!")
+    // Подключаемся к базе данных
+    conn, err := pgx.Connect(context.Background(), dbURL)
+    if err != nil {
+        log.Fatalf("Unable to connect to database: %v\n", err)
+    }
+    defer conn.Close(context.Background())
+    fmt.Println("Connected to PostgreSQL!")
 
-	// Создаем экземпляр OrderDB
-	orderDB := db.NewOrderDB(conn)
+    // Применяем миграции
+    if err := runMigrations(dbURL + "&x-migrations-table=order_migrations"); err != nil {
+        log.Fatalf("Failed to run migrations: %v\n", err)
+    }
+    fmt.Println("Migrations applied successfully!")
 
-	// Создаем новый gRPC сервер
-	grpcServer := grpc.NewServer()
+    // Создаем экземпляр OrderDB
+    orderDB := db.NewOrderDB(conn)
 
-	// Регистрируем обработчик
-	orderHandler := handler.NewOrderHandler(orderDB)
-	proto.RegisterOrderServiceServer(grpcServer, orderHandler)
+    // Создаем новый gRPC сервер
+    grpcServer := grpc.NewServer()
 
-	// Включаем Reflection
-	reflection.Register(grpcServer)
+    // Регистрируем обработчик
+    orderHandler := handler.NewOrderHandler(orderDB)
+    proto.RegisterOrderServiceServer(grpcServer, orderHandler)
 
-	// Запускаем сервер на порту 50052
-	listener, err := net.Listen("tcp", ":50052")
-	if err != nil {
-		log.Fatalf("Ошибка при запуске сервера: %v", err)
-	}
+    // Включаем Reflection
+    reflection.Register(grpcServer)
 
-	log.Println("gRPC сервер запущен на порту 50052...")
-	if err := grpcServer.Serve(listener); err != nil {
-		log.Fatalf("Ошибка при работе сервера: %v", err)
-	}
+    // Запускаем сервер на порту 50052
+    listener, err := net.Listen("tcp", ":50052")
+    if err != nil {
+        log.Fatalf("Ошибка при запуске сервера: %v", err)
+    }
+
+    log.Println("gRPC сервер запущен на порту 50052...")
+    if err := grpcServer.Serve(listener); err != nil {
+        log.Fatalf("Ошибка при работе сервера: %v", err)
+    }
 }
