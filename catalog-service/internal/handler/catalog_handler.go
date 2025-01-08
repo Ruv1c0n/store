@@ -4,11 +4,11 @@ import (
 	"context"
 	"log"
 	db "store/catalog-service/internal/repository"
-	proto2 "store/proto"
+	"store/proto"
 )
 
 type CatalogHandler struct {
-	proto2.UnimplementedProductServiceServer
+	proto.UnimplementedProductServiceServer
 	db db.CatalogDB // Добавляем поле db
 }
 
@@ -16,7 +16,7 @@ func NewCatalogHandler(db db.CatalogDB) *CatalogHandler {
 	return &CatalogHandler{db: db}
 }
 
-func (h *CatalogHandler) UpdateProduct(ctx context.Context, req *proto2.UpdateProductRequest) (*proto2.UpdateProductResponse, error) {
+func (h *CatalogHandler) UpdateProduct(ctx context.Context, req *proto.UpdateProductRequest) (*proto.UpdateProductResponse, error) {
 	log.Printf("Получен запрос UpdateProduct для product_id: %d", req.ProductId)
 
 	// Получаем текущие данные о товаре
@@ -45,12 +45,12 @@ func (h *CatalogHandler) UpdateProduct(ctx context.Context, req *proto2.UpdatePr
 	}
 
 	// Возвращаем успешный ответ
-	return &proto2.UpdateProductResponse{
+	return &proto.UpdateProductResponse{
 		Success: true,
 	}, nil
 }
 
-func (h *CatalogHandler) AddProduct(ctx context.Context, req *proto2.AddProductRequest) (*proto2.AddProductResponse, error) {
+func (h *CatalogHandler) AddProduct(ctx context.Context, req *proto.AddProductRequest) (*proto.AddProductResponse, error) {
 	log.Printf("Получен запрос AddProduct: %v", req)
 
 	// Добавляем продукт в базу данных
@@ -61,12 +61,12 @@ func (h *CatalogHandler) AddProduct(ctx context.Context, req *proto2.AddProductR
 	}
 
 	// Возвращаем ответ
-	return &proto2.AddProductResponse{
+	return &proto.AddProductResponse{
 		ProductId: int32(productID),
 	}, nil
 }
 
-func (h *CatalogHandler) GetProductByID(ctx context.Context, req *proto2.GetProductByIDRequest) (*proto2.GetProductByIDResponse, error) {
+func (h *CatalogHandler) GetProductByID(ctx context.Context, req *proto.GetProductByIDRequest) (*proto.GetProductByIDResponse, error) {
 	log.Printf("Получен запрос GetProductByID для product_id: %d", req.ProductId)
 
 	// Используем реальную базу данных
@@ -77,8 +77,8 @@ func (h *CatalogHandler) GetProductByID(ctx context.Context, req *proto2.GetProd
 	}
 
 	// Возвращаем ответ
-	return &proto2.GetProductByIDResponse{
-		Product: &proto2.Product{
+	return &proto.GetProductByIDResponse{
+		Product: &proto.Product{
 			ProductId:     req.ProductId,
 			ProductName:   productName,
 			StockQuantity: int32(stockQuantity),
@@ -87,7 +87,7 @@ func (h *CatalogHandler) GetProductByID(ctx context.Context, req *proto2.GetProd
 	}, nil
 }
 
-func (h *CatalogHandler) GetAllProducts(ctx context.Context, req *proto2.GetAllProductsRequest) (*proto2.GetAllProductsResponse, error) {
+func (h *CatalogHandler) GetAllProducts(ctx context.Context, req *proto.GetAllProductsRequest) (*proto.GetAllProductsResponse, error) {
 	log.Println("Получен запрос GetAllProducts")
 
 	// Получаем все продукты из базы данных
@@ -98,12 +98,12 @@ func (h *CatalogHandler) GetAllProducts(ctx context.Context, req *proto2.GetAllP
 	}
 
 	// Возвращаем ответ
-	return &proto2.GetAllProductsResponse{
+	return &proto.GetAllProductsResponse{
 		Products: products,
 	}, nil
 }
 
-func (h *CatalogHandler) DeleteProduct(ctx context.Context, req *proto2.DeleteProductRequest) (*proto2.DeleteProductResponse, error) {
+func (h *CatalogHandler) DeleteProduct(ctx context.Context, req *proto.DeleteProductRequest) (*proto.DeleteProductResponse, error) {
 	log.Printf("Получен запрос DeleteProduct для product_id: %d", req.ProductId)
 
 	// Удаляем продукт из базы данных
@@ -114,7 +114,7 @@ func (h *CatalogHandler) DeleteProduct(ctx context.Context, req *proto2.DeletePr
 	}
 
 	// Возвращаем ответ
-	return &proto2.DeleteProductResponse{
+	return &proto.DeleteProductResponse{
 		Success: true,
 	}, nil
 }

@@ -7,46 +7,20 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"net"
+	"store/order-service/internal/client" // Импортируем пакет client
+	"store/order-service/internal/handler"
+	db "store/order-service/internal/repository"
+	"store/proto"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"log"
-	"net"
-	"store/proto"
-
-	//"store/catalog-service/internal/proto"
-	"store/order-service/internal/handler"
-	db "store/order-service/internal/repository"
 )
-
-type DatabaseConfig struct {
-    DbName        string `json:"dbName"`
-    DbUrl         string `json:"dbUrl"`
-    ServerName    string `json:"serverName"`
-    ServerPassword string `json:"serverPassword"`
-    ServerHostName string `json:"serverHostName"`
-    ServerPort    string `json:"serverPort"`
-}
-
-func loadDatabaseConfig(filePath string) (DatabaseConfig, error) {
-    var config DatabaseConfig
-    file, err := os.Open(filePath)
-    if err != nil {
-        return config, err
-    }
-    defer file.Close()
-
-    bytes, err := ioutil.ReadAll(file)
-    if err != nil {
-        return config, err
-    }
-
-    err = json.Unmarshal(bytes, &config)
-    return config, err
-}
 
 func createDatabaseIfNotExists(dbURL, dbName string) error {
 	db, err := sql.Open("postgres", dbURL)
@@ -93,41 +67,38 @@ func runMigrations(databaseURL string) error {
 }
 
 func main() {
-    // Загружаем конфигурацию базы данных
-    config, err := loadDatabaseConfig("database.config")
-    if err != nil {
-        log.Fatalf("Failed to load database config: %v\n", err)
-    }
-
-    // Формируем dbURL из конфигурации
-    dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", 
-        config.ServerName, 
-        config.ServerPassword, 
-        config.ServerHostName, 
-        config.ServerPort, 
-        config.DbName)
+	// Параметры подключения
+	dbURL := "postgres://postgres:C@rumaDemo53@localhost:5432?sslmode=disable"
+	dbName := "catalog" // Используем базу данных "catalog"
 
     // Создаём базу данных, если её нет
     if err := createDatabaseIfNotExists(dbURL, config.DbName); err != nil {
         log.Fatalf("Failed to create database: %v\n", err)
     }
 
-    // Подключаемся к базе данных
-    conn, err := pgx.Connect(context.Background(), dbURL)
-    if err != nil {
-        log.Fatalf("Unable to connect to database: %v\n", err)
-    }
-    defer conn.Close(context.Background())
-    fmt.Println("Connected to PostgreSQL!")
+	// Подключаемся к базе данных
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable")
+	if err != nil {
+		log.Fatalf("Unable to connect to database: %v\n", err)
+	}
+	defer conn.Close(context.Background())
+	fmt.Println("Connected to PostgreSQL!")
 
-    // Применяем миграции
-    if err := runMigrations(dbURL + "&x-migrations-table=order_migrations"); err != nil {
-        log.Fatalf("Failed to run migrations: %v\n", err)
-    }
-    fmt.Println("Migrations applied successfully!")
+	// Применяем миграции
+	if err := runMigrations("postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable&x-migrations-table=order_migrations"); err != nil {
+		log.Fatalf("Failed to run migrations: %v\n", err)
+	}
+	fmt.Println("Migrations applied successfully!")
 
-    // Создаем экземпляр OrderDB
-    orderDB := db.NewOrderDB(conn)
+	// Создаем клиент для CatalogService
+	catalogClient, err := client.NewCatalogClient("localhost:50051")
+	if err != nil {
+		log.Fatalf("Failed to create catalog client: %v", err)
+	}
+	defer catalogClient.Close()
+
+	// Создаем экземпляр OrderDB
+	orderDB := db.NewOrderDB(conn, catalogClient)
 
     // Создаем новый gRPC сервер
     grpcServer := grpc.NewServer()
