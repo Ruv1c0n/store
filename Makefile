@@ -61,13 +61,6 @@ run-catalog: build-catalog ## Run CatalogService
 run-order: build-order ## Run OrderService
 	$(ORDER_BINARY)
 
-# Run all services
-run: ## Run all services
-	@echo "Starting CatalogService on port $(CATALOG_PORT)..."
-	@start cmd /c $(CATALOG_BINARY)
-	@echo "Starting OrderService on port $(ORDER_PORT)..."
-	@start cmd /c $(ORDER_BINARY)
-
 # Migrations for CatalogService
 migrate-catalog-up: ## Apply migrations for CatalogService
 	$(MIGRATE_CMD) -database $(CATALOG_DB_URL) -path $(CATALOG_SERVICE_DIR)/migrations up
@@ -101,7 +94,6 @@ help: ## Show help
 	@echo "  build               Build all services"
 	@echo "  run-catalog         Run CatalogService"
 	@echo "  run-order           Run OrderService"
-	@echo "  run                 Run all services"
 	@echo "  migrate-catalog-up  Apply migrations for CatalogService"
 	@echo "  migrate-catalog-down Rollback migrations for CatalogService"
 	@echo "  migrate-order-up    Apply migrations for OrderService"
