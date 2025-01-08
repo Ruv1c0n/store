@@ -4,6 +4,7 @@ import (
 	"context"
 	"store/proto"
 	"testing"
+	"fmt"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"                        // Используем go.uber.org/mock/gomock
@@ -71,6 +72,29 @@ func TestUpdateProduct(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, resp.Success)
 }
+
+func TestAddProduct_Error(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    mockDB := mock.NewMockCatalogDB(ctrl)
+    h := NewCatalogHandler(mockDB)
+
+    mockDB.EXPECT().
+        AddProduct("Test Product", 10, 19.99).
+        Return(0, fmt.Errorf("failed to add product"))
+
+    req := &proto.AddProductRequest{
+        ProductName:   "Test Product",
+        StockQuantity: 10,
+        PricePerUnit:  19.99,
+    }
+    resp, err := h.AddProduct(context.Background(), req)
+
+    assert.Error(t, err)
+    assert.Nil(t, resp)
+}
+
 
 func TestGetProductByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -165,4 +189,110 @@ func TestDeleteProduct(t *testing.T) {
 	// Проверяем результат
 	assert.NoError(t, err)
 	assert.True(t, resp.Success)
+}
+
+func TestGetProductByID_Error(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockDB := mock.NewMockCatalogDB(ctrl)
+	h := NewCatalogHandler(mockDB)
+
+	mockDB.EXPECT().
+		GetProductByID(int32(1)).
+		Return("", 0, 0.0, fmt.Errorf("product not found"))
+
+	req := &proto.GetProductByIDRequest{ProductId: 1}
+	resp, err := h.GetProductByID(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+}
+
+func TestUpdateProduct_GetProductByID_Error(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    mockDB := mock.NewMockCatalogDB(ctrl)
+    h := NewCatalogHandler(mockDB)
+
+    mockDB.EXPECT().
+        GetProductByID(int32(1)).
+        Return("", 0, 0.0, fmt.Errorf("product not found"))
+
+    req := &proto.UpdateProductRequest{
+        ProductId:     1,
+        ProductName:   "Updated Product",
+        StockQuantity: 20,
+        PricePerUnit:  29.99,
+    }
+    resp, err := h.UpdateProduct(context.Background(), req)
+
+    assert.Error(t, err)
+    assert.Nil(t, resp)
+}
+
+func TestUpdateProduct_UpdateProduct_Error(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    mockDB := mock.NewMockCatalogDB(ctrl)
+    h := NewCatalogHandler(mockDB)
+
+    mockDB.EXPECT().
+        GetProductByID(int32(1)).
+        Return("Old Product", 10, 19.99, nil)
+
+    mockDB.EXPECT().
+        UpdateProduct(1, "Updated Product", 20, 29.99).
+        Return(fmt.Errorf("failed to update product"))
+
+    req := &proto.UpdateProductRequest{
+        ProductId:     1,
+        ProductName:   "Updated Product",
+        StockQuantity: 20,
+        PricePerUnit:  29.99,
+    }
+    resp, err := h.UpdateProduct(context.Background(), req)
+
+    assert.Error(t, err)
+    assert.Nil(t, resp)
+}
+
+func TestGetAllProducts_Error(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    mockDB := mock.NewMockCatalogDB(ctrl)
+    h := NewCatalogHandler(mockDB)
+
+    mockDB.EXPECT().
+        GetAllProducts().
+        Return(nil, fmt.Errorf("failed to retrieve products"))
+
+    req := &proto.GetAllProductsRequest{}
+    resp, err := h.GetAllProducts(context.Background(), req)
+
+    assert.Error(t, err)
+    assert.Nil(t, resp)
+}
+
+func TestDeleteProduct_Error(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    mockDB := mock.NewMockCatalogDB(ctrl)
+    h := NewCatalogHandler(mockDB)
+
+    mockDB.EXPECT().
+        DeleteProduct(1).
+        Return(fmt.Errorf("failed to delete product"))
+
+    req := &proto.DeleteProductRequest{
+        ProductId: 1,
+    }
+    resp, err := h.DeleteProduct(context.Background(), req)
+
+    assert.Error(t, err)
+    assert.Nil(t, resp)
 }

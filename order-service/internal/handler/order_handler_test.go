@@ -262,3 +262,177 @@ func TestDeleteOrder_Failure(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, resp)
 }
+
+func TestCreateOrder_DBError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create a mock for OrderDB
+	mockDB := mock.NewMockOrderDB(ctrl)
+
+	// Create the OrderHandler with the mock
+	handler := NewOrderHandler(mockDB)
+
+	// Define test data
+	customerID := int32(1)
+	productID := int32(2)
+	quantity := int32(2)
+
+	// Mock GetNextOrderID to simulate a database error
+	mockDB.EXPECT().
+		GetNextOrderID(gomock.Any(), gomock.Any()).
+		Return(errors.New("database error"))
+
+	// Call the CreateOrder method
+	req := &proto.CreateOrderRequest{
+		CustomerId: customerID,
+		Items: []*proto.OrderItem{
+			{
+				ProductId: productID,
+				Quantity:  quantity,
+			},
+		},
+	}
+	resp, err := handler.CreateOrder(context.Background(), req)
+
+	// Assert the results
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "database error")
+}
+
+func TestCreateOrder_StockValidationError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Create a mock for OrderDB
+	mockDB := mock.NewMockOrderDB(ctrl)
+
+	// Create the OrderHandler with the mock
+	handler := NewOrderHandler(mockDB)
+
+	// Define test data
+	customerID := int32(1)
+	productID := int32(2)
+	quantity := int32(5)
+	stockQuantity := 3 // Requested quantity exceeds stock
+
+	// Mock GetNextOrderID to return a new order ID
+	mockDB.EXPECT().GetNextOrderID(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id *int32) error {
+		*id = int32(1)
+		return nil
+	})
+
+	// Mock GetProductByID to return product details
+	mockDB.EXPECT().GetProductByID(productID).Return("ProductName", stockQuantity, 19.99, nil)
+
+	// Call the CreateOrder method
+	req := &proto.CreateOrderRequest{
+		CustomerId: customerID,
+		Items: []*proto.OrderItem{
+			{
+				ProductId: productID,
+				Quantity:  quantity,
+			},
+		},
+	}
+	resp, err := handler.CreateOrder(context.Background(), req)
+
+	// Assert the results
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "Not enough stock for the product")
+}
+
+func TestCreateOrder_ProductNotFoundError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Создание мока для OrderDB
+	mockDB := mock.NewMockOrderDB(ctrl)
+
+	// Создание обработчика с моками
+	handler := NewOrderHandler(mockDB)
+
+	// Определение тестовых данных
+	customerID := int32(1)
+	productID := int32(2)
+	quantity := int32(2)
+
+	// Мокаем GetNextOrderID для возврата нового ID заказа
+	mockDB.EXPECT().GetNextOrderID(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id *int32) error {
+		*id = 1
+		return nil
+	})
+
+	// Мокаем ошибку при получении товара
+	mockDB.EXPECT().GetProductByID(productID).Return("", 0, 0.0, errors.New("Product not found"))
+
+	// Запрос для создания заказа
+	req := &proto.CreateOrderRequest{
+		CustomerId: customerID,
+		Items: []*proto.OrderItem{
+			{
+				ProductId: productID,
+				Quantity:  quantity,
+			},
+		},
+	}
+
+	// Выполнение запроса
+	resp, err := handler.CreateOrder(context.Background(), req)
+
+	// Проверки
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "Product not found")
+}
+
+func TestCreateOrder_CreateOrderError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	// Создание мока для OrderDB
+	mockDB := mock.NewMockOrderDB(ctrl)
+
+	// Создание обработчика с моками
+	handler := NewOrderHandler(mockDB)
+
+	// Определение тестовых данных
+	customerID := int32(1)
+	productID := int32(2)
+	quantity := int32(2)
+	orderID := int32(2)
+	stockQuantity := 10
+
+	// Мокаем GetNextOrderID для возврата нового ID заказа
+	mockDB.EXPECT().GetNextOrderID(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id *int32) error {
+		*id = orderID
+		return nil
+	})
+
+	// Мокаем GetProductByID для возврата данных о товаре
+	mockDB.EXPECT().GetProductByID(productID).Return("ProductName", stockQuantity, 19.99, nil)
+
+	// Мокаем ошибку при создании заказа
+	mockDB.EXPECT().CreateOrder(gomock.Any(), orderID, productID, customerID, quantity, 19.99).Return(errors.New("Database error"))
+
+	// Запрос для создания заказа
+	req := &proto.CreateOrderRequest{
+		CustomerId: customerID,
+		Items: []*proto.OrderItem{
+			{
+				ProductId: productID,
+				Quantity:  quantity,
+			},
+		},
+	}
+
+	// Выполнение запроса
+	resp, err := handler.CreateOrder(context.Background(), req)
+
+	// Проверки
+	assert.Error(t, err)
+	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "Database error")
+}
