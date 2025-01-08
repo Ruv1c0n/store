@@ -9,10 +9,13 @@ CATALOG_BINARY = $(BUILD_DIR)/catalog-service
 ORDER_BINARY = $(BUILD_DIR)/order-service
 CATALOG_PORT = 50051
 ORDER_PORT = 50052
+# Read config.txt and set environment variables
+include config.txt
+export $(sed 's/=.*//' config.txt)
 
-# Database connection strings
-CATALOG_DB_URL = "postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable&x-migrations-table=catalog_migrations"
-ORDER_DB_URL = "postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable&x-migrations-table=order_migrations"
+# Default database connection strings (can be overridden by environment variables)
+CATALOG_DB_URL = "postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)&x-migrations-table=catalog_migrations"
+ORDER_DB_URL = "postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)&x-migrations-table=order_migrations"
 
 # Path to proto files
 CATALOG_PROTO_FILES = ./proto/catalog.proto

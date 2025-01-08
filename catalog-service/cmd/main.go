@@ -1,9 +1,9 @@
 package main
 
 import (
-	"encoding/json"
-    "io/ioutil"
-    "os"
+	"bufio"
+	"os"
+	"strings"
 	"context"
 	"database/sql"
 	"fmt"
@@ -30,7 +30,7 @@ func createDatabaseIfNotExists(dbURL, dbName string) error {
 	defer db.Close()
 
 	var exists bool
-	err = db.QueryRow("SELECT EXISTS (SELECT * FROM pg_database WHERE datname = 'catalog')", dbName).Scan(&exists)
+	err = db.QueryRow("SELECT EXISTS (SELECT * FROM pg_database WHERE datname = $1)", dbName).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check if database exists: %w", err)
 	}
@@ -66,18 +66,86 @@ func runMigrations(databaseURL string) error {
 	return nil
 }
 
+// Config структура для хранения конфигурации
+type Config struct {
+	Username string
+	Password string
+	Host     string
+	Port     string
+	DBName   string
+	SSLMode  string
+}
+
+// loadConfig загружает конфигурацию из текстового файла
+func loadConfig(filePath string) (*Config, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	config := &Config{}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" {
+			continue // пропускаем пустые строки
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue // пропускаем некорректные строки
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		switch key {
+		case "DB_USERNAME":
+			config.Username = value
+		case "DB_PASSWORD":
+			config.Password = value
+		case "DB_HOST":
+			config.Host = value
+		case "DB_PORT":
+			config.Port = value
+		case "DB_NAME":
+			config.DBName = value
+		case "DB_SSLMODE":
+			config.SSLMode = value
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+// generateDBURL генерирует строку подключения к базе данных
+func generateDBURL(cfg Config, dbname bool) string {
+	if dbname {
+		return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DBName, cfg.SSLMode)
+	} else{
+		return fmt.Sprintf("postgres://%s:%s@%s:%s?sslmode=%s", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.SSLMode)
+	}
+}
 func main() {
-	// Параметры подключения
-	dbURL := "postgres://postgres:C@rumaDemo53@localhost:5432?sslmode=disable"
-	dbName := "catalog"
+	// Загружаем конфигурацию
+	config, err := loadConfig("config.txt") // Укажите путь к вашему текстовому файлу
+	if err != nil {
+		log.Fatalf("Failed to load config: %v\n", err)
+	}
+
+	// Генерируем строку подключения
+	dbURL := generateDBURL(*config, false)
 
 	// Создаём базу данных, если её нет
-	if err := createDatabaseIfNotExists(dbURL, config.DbName); err != nil {
+	if err := createDatabaseIfNotExists(dbURL, config.DBName); err != nil {
 		log.Fatalf("Failed to create database: %v\n", err)
 	}
 
 	// Подключаемся к базе данных
-	conn, err := pgx.Connect(context.Background(), "postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable")
+	dbURLWithDB := generateDBURL(*config, true)
+	conn, err := pgx.Connect(context.Background(), dbURLWithDB)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
@@ -85,7 +153,7 @@ func main() {
 	fmt.Println("Connected to PostgreSQL!")
 
 	// Применяем миграции
-	if err := runMigrations("postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable&x-migrations-table=catalog_migrations"); err != nil {
+	if err := runMigrations(dbURLWithDB+"&x-migrations-table=catalog_migrations"); err != nil {
 		log.Fatalf("Failed to run migrations: %v\n", err)
 	}
 	fmt.Println("Migrations applied successfully!")
