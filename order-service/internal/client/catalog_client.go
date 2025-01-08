@@ -11,6 +11,7 @@ import (
 type CatalogClient interface {
 	UpdateProductStock(productID int32, newStockQuantity int32) error
 	Close()
+	GetProductByID(productID int32) (string, int, float64, error)
 }
 
 // CatalogClientImpl реализует интерфейс CatalogClient
@@ -48,4 +49,17 @@ func (c *CatalogClientImpl) UpdateProductStock(productID int32, newStockQuantity
 		return err
 	}
 	return nil
+}
+
+// GetProductByID получает информацию о продукте по его ID через gRPC
+func (c *CatalogClientImpl) GetProductByID(productID int32) (string, int, float64, error) {
+    req := &proto.GetProductByIDRequest{
+        ProductId: productID,
+    }
+    res, err := c.client.GetProductByID(context.Background(), req)
+    if err != nil {
+        log.Printf("Failed to get product by ID: %v", err)
+        return "", 0, 0.0, err
+    }
+    return res.Product.ProductName, int(res.Product.StockQuantity), res.Product.PricePerUnit,  nil
 }

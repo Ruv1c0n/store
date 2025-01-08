@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
 	"store/order-service/internal/client"
 	"store/proto"
 	"time"
@@ -18,7 +19,7 @@ type OrderDB interface {
 	GetAllOrders() ([]*proto.Order, error)
 	UpdateOrder(orderID int32, status string) error
 	DeleteOrder(orderID int32) error
-	GetProductByID(productID int32) (string, int, float64, error)
+	// GetProductByID(productID int32) (string, int, float64, error)
 }
 
 //go:generate mockgen -source=db.go -destination=mock/mock.go
@@ -191,10 +192,18 @@ func (db *orderDB) DeleteOrder(orderID int32) error {
 		return fmt.Errorf("failed to get order details: %w", err)
 	}
 
+	// Создаем gRPC-клиент для catalog-service
+	catalogClient, err := client.NewCatalogClient("localhost:50051") // Укажите адрес catalog-service
+	if err != nil {
+		log.Printf("Ошибка при создании gRPC-клиента для catalog-service: %v", err)
+		return err
+	}
+	defer catalogClient.Close()
+
 	// Восстанавливаем количество товаров в каталоге
 	for _, item := range order.Items {
 		// Получаем текущее количество товара на складе из каталога
-		_, stockQuantity, _, err := db.GetProductByID(item.ProductId)
+		_, stockQuantity, _, err := catalogClient.GetProductByID(item.ProductId)
 		if err != nil {
 			return fmt.Errorf("failed to get product stock quantity: %w", err)
 		}
@@ -221,16 +230,16 @@ func (db *orderDB) DeleteOrder(orderID int32) error {
 	return nil
 }
 
-// GetProductByID возвращает информацию о товаре по его ID
-func (db *orderDB) GetProductByID(productID int32) (string, int, float64, error) {
-	var productName string
-	var stockQuantity int
-	var pricePerUnit float64
-	err := db.conn.QueryRow(context.Background(), `
-        SELECT ProductName, StockQuantity, PricePerUnit FROM Catalog 
-        WHERE ProductID = $1`, productID).Scan(&productName, &stockQuantity, &pricePerUnit)
-	if err != nil {
-		return "", 0, 0, err
-	}
-	return productName, stockQuantity, pricePerUnit, nil
-}
+// // GetProductByID возвращает информацию о товаре по его ID
+// func (db *orderDB) GetProductByID(productID int32) (string, int, float64, error) {
+// 	var productName string
+// 	var stockQuantity int
+// 	var pricePerUnit float64
+// 	err := db.conn.QueryRow(context.Background(), `
+//         SELECT ProductName, StockQuantity, PricePerUnit FROM Catalog 
+//         WHERE ProductID = $1`, productID).Scan(&productName, &stockQuantity, &pricePerUnit)
+// 	if err != nil {
+// 		return "", 0, 0, err
+// 	}
+// 	return productName, stockQuantity, pricePerUnit, nil
+// }
