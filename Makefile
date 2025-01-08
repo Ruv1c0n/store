@@ -9,10 +9,13 @@ CATALOG_BINARY = $(BUILD_DIR)/catalog-service
 ORDER_BINARY = $(BUILD_DIR)/order-service
 CATALOG_PORT = 50051
 ORDER_PORT = 50052
+# Read config.txt and set environment variables
+include config.txt
+export $(sed 's/=.*//' config.txt)
 
-# Database connection strings
-CATALOG_DB_URL = "postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable&x-migrations-table=catalog_migrations"
-ORDER_DB_URL = "postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable&x-migrations-table=order_migrations"
+# Default database connection strings (can be overridden by environment variables)
+CATALOG_DB_URL = "postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)&x-migrations-table=catalog_migrations"
+ORDER_DB_URL = "postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)&x-migrations-table=order_migrations"
 
 # Path to proto files
 CATALOG_PROTO_FILES = ./proto/catalog.proto
@@ -55,24 +58,30 @@ build: build-catalog build-order ## Build all services
 
 # Run CatalogService
 run-catalog: build-catalog ## Run CatalogService
+	$(call load-db-config,$(CATALOG_DB_CONFIG))
 	$(CATALOG_BINARY)
 
 # Run OrderService
 run-order: build-order ## Run OrderService
+	$(call load-db-config,$(ORDER_DB_CONFIG))
 	$(ORDER_BINARY)
 
 # Migrations for CatalogService
-migrate-catalog-up: ## Apply migrations for CatalogService
+ migrate-catalog-up:
+	$(call load-db-config,$(CATALOG_DB_CONFIG))
 	$(MIGRATE_CMD) -database $(CATALOG_DB_URL) -path $(CATALOG_SERVICE_DIR)/migrations up
 
 migrate-catalog-down: ## Rollback migrations for CatalogService
+	$(call load-db-config,$(CATALOG_DB_CONFIG))
 	$(MIGRATE_CMD) -database $(CATALOG_DB_URL) -path $(CATALOG_SERVICE_DIR)/migrations down
 
 # Migrations for OrderService
 migrate-order-up: ## Apply migrations for OrderService
+	$(call load-db-config,$(ORDER_DB_CONFIG))
 	$(MIGRATE_CMD) -database $(ORDER_DB_URL) -path $(ORDER_SERVICE_DIR)/migrations up
 
 migrate-order-down: ## Rollback migrations for OrderService
+	$(call load-db-config,$(ORDER_DB_CONFIG))
 	$(MIGRATE_CMD) -database $(ORDER_DB_URL) -path $(ORDER_SERVICE_DIR)/migrations down
 
 # Apply migrations for all services
