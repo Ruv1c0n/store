@@ -58,7 +58,14 @@ func (h *OrderHandler) CreateOrder(ctx context.Context, req *proto.CreateOrderRe
 		}
 
 		// Создаем запись в таблице Orders
-		err = h.db.CreateOrder(ctx, orderID, item.ProductId, req.CustomerId, item.Quantity, pricePerUnit)
+		err = h.db.CreateOrder(
+			ctx,
+			orderID,
+			item.ProductId, 
+			req.CustomerId, 
+			item.Quantity, 
+			pricePerUnit,
+		)
 		if err != nil {
 			log.Printf("Ошибка при создании заказа: %v", err)
 			return nil, err
@@ -72,7 +79,12 @@ func (h *OrderHandler) CreateOrder(ctx context.Context, req *proto.CreateOrderRe
 			return nil, err
 		}
 
-		log.Printf("Добавлен товар в заказ: OrderID=%d, ProductID=%d, Quantity=%d", orderID, item.ProductId, item.Quantity)
+		log.Printf(
+			"Добавлен товар в заказ: OrderID=%d, ProductID=%d, Quantity=%d", 
+			orderID, 
+			item.ProductId, 
+			item.Quantity,
+		)
 	}
 
 	log.Printf("Создан заказ с OrderID: %d", orderID)

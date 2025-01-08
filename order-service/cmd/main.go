@@ -79,9 +79,24 @@ func loadConfig(filePath string) (*Config, error) {
 // generateDBURL генерирует строку подключения к базе данных
 func generateDBURL(cfg Config, dbname bool) string {
 	if dbname {
-		return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DBName, cfg.SSLMode)
+		return fmt.Sprintf(
+			"postgres://%s:%s@%s:%s/%s?sslmode=%s", 
+			cfg.Username, 
+			cfg.Password, 
+			cfg.Host, 
+			cfg.Port, 
+			cfg.DBName, 
+			cfg.SSLMode,
+		)
 	} else {
-		return fmt.Sprintf("postgres://%s:%s@%s:%s?sslmode=%s", cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.SSLMode)
+		return fmt.Sprintf(
+			"postgres://%s:%s@%s:%s?sslmode=%s", 
+			cfg.Username, 
+			cfg.Password, 
+			cfg.Host, 
+			cfg.Port, 
+			cfg.SSLMode,
+		)
 	}
 }
 
@@ -94,7 +109,10 @@ func createDatabaseIfNotExists(dbURL, dbName string) error {
 	defer db.Close()
 
 	var exists bool
-	err = db.QueryRow("SELECT EXISTS (SELECT FROM pg_database WHERE datname = $1)", dbName).Scan(&exists)
+	err = db.QueryRow(
+		"SELECT EXISTS (SELECT FROM pg_database WHERE datname = $1)", 
+		dbName,
+	).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check if database exists: %w", err)
 	}
