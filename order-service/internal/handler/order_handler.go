@@ -45,7 +45,7 @@ func (h *OrderHandler) CreateOrder(ctx context.Context, req *proto.CreateOrderRe
 	// Обрабатываем каждый товар в заказе
 	for _, item := range req.Items {
 		// Получаем информацию о товаре, включая цену
-		_, stockQuantity, pricePerUnit, err := h.db.GetProductByID(item.ProductId)
+		_, stockQuantity, pricePerUnit, err := catalogClient.GetProductByID(item.ProductId)
 		if err != nil {
 			log.Printf("Ошибка при получении товара: %v", err)
 			return nil, err
