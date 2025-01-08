@@ -28,6 +28,7 @@ store-main
 │  │  └─ service
 │  │     └─ service.go
 │  └─ migrations
+│     ├─ 20250104120000_create_products_table.down.sql
 │     └─ 20250104120000_create_products_table.up.sql
 ├─ Db
 ├─ go.mod
@@ -48,7 +49,8 @@ store-main
 │  │  └─ service
 │  │     └─ service.go
 │  └─ migrations
-│     └─ 20250104121000_create_orders_table.sql
+│     ├─ 20250104120000_create_orders_table.down.sql
+│     └─ 20250104121000_create_orders_table.up.sql
 └─ README.md
 
 ```

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package catalog;
 
-option go_package = "internal/proto;proto";
+option go_package = "./;proto";
 
 // Сообщение для представления продукта
 message Product {

@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"store/catalog-service/internal/handler"
+	db "store/catalog-service/internal/repository"
+	"store/proto"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -13,9 +16,6 @@ import (
 	"github.com/jackc/pgx/v4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"store/catalog-service/internal/handler"
-	"store/catalog-service/internal/proto"
-	db "store/catalog-service/internal/repository"
 )
 
 // createDatabaseIfNotExists создаёт базу данных, если её ещё нет
@@ -65,7 +65,7 @@ func runMigrations(databaseURL string) error {
 
 func main() {
 	// Параметры подключения
-	dbURL := "postgres://postgres:0000@localhost:5432?sslmode=disable"
+	dbURL := "postgres://postgres:C@rumaDemo53@localhost:5432?sslmode=disable"
 	dbName := "catalog"
 
 	// Создаём базу данных, если её нет
@@ -74,7 +74,7 @@ func main() {
 	}
 
 	// Подключаемся к базе данных
-	conn, err := pgx.Connect(context.Background(), "postgres://postgres:0000@localhost:5432/catalog?sslmode=disable")
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable")
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
@@ -82,7 +82,7 @@ func main() {
 	fmt.Println("Connected to PostgreSQL!")
 
 	// Применяем миграции
-	if err := runMigrations("postgres://postgres:0000@localhost:5432/catalog?sslmode=disable"); err != nil {
+	if err := runMigrations("postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable&x-migrations-table=catalog_migrations"); err != nil {
 		log.Fatalf("Failed to run migrations: %v\n", err)
 	}
 	fmt.Println("Migrations applied successfully!")
