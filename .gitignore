@@ -1,6 +1,5 @@
-/bin
-/.idea
-/.vscode
+/bin/*
+/.idea/*
+/.vscode/*
 /Db
-/update_order_request.json
-/*.pb.go
+/*/*.pb.go
