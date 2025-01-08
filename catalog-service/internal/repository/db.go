@@ -47,7 +47,12 @@ func (db *catalogDB) GetAllProducts() ([]*proto.Product, error) {
 	var products []*proto.Product
 	for rows.Next() {
 		var product proto.Product
-		err := rows.Scan(&product.ProductId, &product.ProductName, &product.StockQuantity, &product.PricePerUnit)
+		err := rows.Scan(
+			&product.ProductId,
+			 &product.ProductName, 
+			 &product.StockQuantity, 
+			 &product.PricePerUnit,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -62,7 +67,9 @@ func (db *catalogDB) GetProductByID(productID int32) (string, int, float64, erro
 	var stockQuantity int
 	var pricePerUnit float64
 	err := db.conn.QueryRow(context.Background(),
-		"SELECT ProductName, StockQuantity, PricePerUnit FROM Catalog WHERE ProductID=$1", productID).
+			"SELECT ProductName, StockQuantity, PricePerUnit FROM Catalog WHERE ProductID=$1", 
+			productID,
+		).
 		Scan(&productName, &stockQuantity, &pricePerUnit)
 	if err != nil {
 		return "", 0, 0, err
@@ -78,6 +85,10 @@ func (db *catalogDB) UpdateProduct(productID int, productName string, stockQuant
 }
 
 func (db *catalogDB) DeleteProduct(productID int) error {
-	_, err := db.conn.Exec(context.Background(), "DELETE FROM Catalog WHERE ProductID=$1", productID)
+	_, err := db.conn.Exec(
+		context.Background(), 
+		"DELETE FROM Catalog WHERE ProductID=$1",
+		productID,
+	)
 	return err
 }
