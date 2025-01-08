@@ -7,44 +7,19 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"net"
+	"store/catalog-service/internal/handler"
+	db "store/catalog-service/internal/repository"
+	"store/proto"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"log"
-	"net"
-	"store/catalog-service/internal/handler"
-	db "store/catalog-service/internal/repository"
-	"store/proto"
 )
-
-type DatabaseConfig struct {
-    DbName        string `json:"dbName"`
-    DbUrl         string `json:"dbUrl"`
-    ServerName    string `json:"serverName"`
-    ServerPassword string `json:"serverPassword"`
-    ServerHostName string `json:"serverHostName"`
-    ServerPort    string `json:"serverPort"`
-}
-
-func loadDatabaseConfig(filePath string) (DatabaseConfig, error) {
-    var config DatabaseConfig
-    file, err := os.Open(filePath)
-    if err != nil {
-        return config, err
-    }
-    defer file.Close()
-
-    bytes, err := ioutil.ReadAll(file)
-    if err != nil {
-        return config, err
-    }
-
-    err = json.Unmarshal(bytes, &config)
-    return config, err
-}
 
 // createDatabaseIfNotExists создаёт базу данных, если её ещё нет
 func createDatabaseIfNotExists(dbURL, dbName string) error {
@@ -92,20 +67,9 @@ func runMigrations(databaseURL string) error {
 }
 
 func main() {
-	// Загружаем конфигурацию базы данных
-    config, err := loadDatabaseConfig("database.config")
-    if err != nil {
-        log.Fatalf("Failed to load database config: %v\n", err)
-    }
-
-    // Формируем dbURL из конфигурации
-    dbURL := fmt.Sprintf(
-		config.DbUrl, 
-		config.ServerName, 
-		config.ServerPassword, 
-		config.ServerHostName, 
-		config.ServerPort,
-	)
+	// Параметры подключения
+	dbURL := "postgres://postgres:C@rumaDemo53@localhost:5432?sslmode=disable"
+	dbName := "catalog"
 
 	// Создаём базу данных, если её нет
 	if err := createDatabaseIfNotExists(dbURL, config.DbName); err != nil {
@@ -113,7 +77,7 @@ func main() {
 	}
 
 	// Подключаемся к базе данных
-	conn, err := pgx.Connect(context.Background(), dbURL)
+	conn, err := pgx.Connect(context.Background(), "postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable")
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v\n", err)
 	}
@@ -121,7 +85,7 @@ func main() {
 	fmt.Println("Connected to PostgreSQL!")
 
 	// Применяем миграции
-	if err := runMigrations(dbURL + "&x-migrations-table=catalog_migrations"); err != nil {
+	if err := runMigrations("postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable&x-migrations-table=catalog_migrations"); err != nil {
 		log.Fatalf("Failed to run migrations: %v\n", err)
 	}
 	fmt.Println("Migrations applied successfully!")

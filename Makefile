@@ -9,20 +9,10 @@ CATALOG_BINARY = $(BUILD_DIR)/catalog-service
 ORDER_BINARY = $(BUILD_DIR)/order-service
 CATALOG_PORT = 50051
 ORDER_PORT = 50052
-CATALOG_DB_CONFIG = database.config
-ORDER_DB_CONFIG = database.config
 
-# Load database configuration
-define load-db-config
-	$(eval CONFIG := $(type $(1)))
-	$(eval CATALOG_DB_URL := $(echo $(CONFIG) | jq -r '.dbUrl' | sed 's/%s/$(echo $(CONFIG) | jq -r '.serverName')/g' | sed 's/%s/$(echo $(CONFIG) | jq -r '.serverPassword')/g' | sed 's/%s/$(echo $(CONFIG) | jq -r '.serverHostName')/g' | sed 's/%s/$(echo $(CONFIG) | jq -r '.serverPort')/g'))
-	$(eval ORDER_DB_URL := $(CATALOG_DB_URL))
-endef
-
-# Load database configuration
-load-config:
-	@echo "Loading database configuration..."
-	@bash load_config.sh
+# Database connection strings
+CATALOG_DB_URL = "postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable&x-migrations-table=catalog_migrations"
+ORDER_DB_URL = "postgres://postgres:C@rumaDemo53@localhost:5432/catalog?sslmode=disable&x-migrations-table=order_migrations"
 
 # Path to proto files
 CATALOG_PROTO_FILES = ./proto/catalog.proto
@@ -73,13 +63,6 @@ run-order: build-order ## Run OrderService
 	$(call load-db-config,$(ORDER_DB_CONFIG))
 	$(ORDER_BINARY)
 
-# Run all services
-run: ## Run all services
-	@echo "Starting CatalogService on port $(CATALOG_PORT)..."
-	@start cmd /c $(CATALOG_BINARY)
-	@echo "Starting OrderService on port $(ORDER_PORT)..."
-	@start cmd /c $(ORDER_BINARY)
-
 # Migrations for CatalogService
  migrate-catalog-up:
 	$(call load-db-config,$(CATALOG_DB_CONFIG))
@@ -117,7 +100,6 @@ help: ## Show help
 	@echo "  build               Build all services"
 	@echo "  run-catalog         Run CatalogService"
 	@echo "  run-order           Run OrderService"
-	@echo "  run                 Run all services"
 	@echo "  migrate-catalog-up  Apply migrations for CatalogService"
 	@echo "  migrate-catalog-down Rollback migrations for CatalogService"
 	@echo "  migrate-order-up    Apply migrations for OrderService"
