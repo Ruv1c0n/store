@@ -10,10 +10,9 @@
 package mock
 
 import (
-	reflect "reflect"
-	proto "store/catalog-service/internal/proto"
-
 	gomock "go.uber.org/mock/gomock"
+	reflect "reflect"
+	"store/proto"
 )
 
 // MockCatalogDB is a mock of CatalogDB interface.
