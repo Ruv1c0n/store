@@ -3,3 +3,5 @@
 /.vscode/*
 /Db
 /*/*.pb.go
+# local config with credentials
+config.txt

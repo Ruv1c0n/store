@@ -1,4 +1,25 @@
 # Микросервис онлайн магазина
+
+Учебный проект: два gRPC-микросервиса интернет-магазина на Go с PostgreSQL.
+
+| Сервис | Порт | Назначение |
+|---|---|---|
+| **catalog-service** | `:50051` | Товары: добавление, получение (по ID / все), обновление, удаление |
+| **order-service** | `:50052` | Заказы: создание (с проверкой наличия товара через catalog-client), получение, обновление статуса, удаление |
+
+Общение между сервисами — gRPC (см. `proto/catalog.proto`, `proto/order.proto`), хранение — PostgreSQL, миграции — `golang-migrate`.
+
+## Конфигурация
+
+Перед запуском создайте локальный конфиг из шаблона:
+
+```bash
+cp config.example.txt config.txt
+# и укажите свои параметры подключения к PostgreSQL
+```
+
+`config.txt` не коммитится (в `.gitignore`) — там лежат креды БД.
+
 ## Архитектура проекта
 ```
 store
@@ -36,8 +57,8 @@ store
 │  └─ catalog.proto
 │  └─ order.proto
 ├─ .gitignore
-├─  config.txt
-├─  go.mod
+├─ config.example.txt   # шаблон конфига БД (скопировать в config.txt)
+├─ go.mod
 ├─  go.sum
 ├─  Makefile
 └─ README.md
